@@ -37,9 +37,11 @@ def init_services(app):
     from routes.search import register_routes as register_search_routes
     from routes.document import register_routes as register_document_routes
     from routes.raw_files import register_routes as register_raw_files_routes
-    
+    from routes.admin import register_routes as register_admin_routes
+
     register_main_routes(app)
     register_search_routes(app)
     register_document_routes(app)
     register_raw_files_routes(app)
+    register_admin_routes(app)
     

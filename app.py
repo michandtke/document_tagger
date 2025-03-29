@@ -1,8 +1,8 @@
 # app.py
 import logging
 from fasthtml.common import *
-from document_tagger.config import log_config
-from document_tagger.routes import init_services
+from config import log_config
+from routes import init_services
 
 # Configure logging
 logging.basicConfig(

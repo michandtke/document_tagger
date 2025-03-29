@@ -4,6 +4,7 @@ import logging
 import requests
 import datetime
 from urllib.parse import urljoin, unquote
+from services.document_cache import DocumentCache
 
 class WebDAVService:
     """
@@ -28,6 +29,9 @@ class WebDAVService:
         self.base_url = urljoin(self.webdav_url, self.folder_path)
         self.base_url_raw = urljoin(self.webdav_url, self.folder_path_raw)
         self.logger = logging.getLogger(__name__)
+        
+        # Initialize document cache
+        self.cache = DocumentCache()
         
         self.logger.info(f"Initializing WebDAV service with base URL: {self.base_url}")
         
@@ -67,12 +71,17 @@ class WebDAVService:
     
     def get_all_documents(self):
         """
-        Get all documents from WebDAV storage
+        Get all documents from WebDAV storage with caching
         
         Returns:
             list: List of document dictionaries
         """
-        self.logger.info(f"Listing files in folder: {self.base_url}")
+        # If cache is already loaded, return cached documents
+        if self.cache.is_loaded:
+            self.logger.info("Using cached documents")
+            return self.cache.get_all_documents()
+            
+        self.logger.info(f"Loading documents from WebDAV folder: {self.base_url}")
         
         # List files
         files = self._list_files()
@@ -104,6 +113,9 @@ class WebDAVService:
                 'embedding': metadata.get('embedding', []),
                 'similarity': 0  # Default value, will be calculated when needed
             })
+        
+        # Update the cache with all documents
+        self.cache.set_documents(documents)
         
         self.logger.info(f"Retrieved {len(documents)} documents with metadata")
         return documents
@@ -219,7 +231,7 @@ class WebDAVService:
             return response.content
                 
         except Exception as e:
-            self.logger.error(f"Error downloading raw file ({raw_file_url}): {response.status_code}")
+            self.logger.error(f"Error downloading raw file ({raw_file_url}): {str(e)}")
             return
     
     def add_document(self, filename, tags, file_data=None, content=None):
@@ -250,7 +262,7 @@ class WebDAVService:
         # Add embedding if content is provided
         if content:
             try:
-                from document_tagger.services.similarity_service import SimilarityService
+                from services.similarity_service import SimilarityService
                 # Create a temporary service just for embedding generation
                 temp_service = SimilarityService(None)
                 embedding = temp_service.generate_embedding(content)
@@ -290,6 +302,19 @@ class WebDAVService:
         except Exception as e:
             self.logger.error(f"Error uploading metadata: {str(e)}")
             success = False
+        
+        # If successful, update the document cache
+        if success:
+            # Create document object
+            doc = {
+                'id': filename,
+                'filename': filename,
+                'tags': tag_list,
+                'embedding': metadata.get('embedding', []),
+                'similarity': 0
+            }
+            # Update cache
+            self.cache.update_document(doc)
         
         return success
     
@@ -333,9 +358,12 @@ class WebDAVService:
             self.logger.error(f"Error deleting metadata: {str(e)}")
             success = False
         
+        # Update the cache if the deletion was successful
+        if success:
+            self.cache.delete_document(doc_id)
+        
         return success
     
-    # services/webdav_service.py (add these methods)
     def get_all_files_without_metadata(self, raw_folder):
         """
         Get all files from a folder that don't have metadata
@@ -479,3 +507,24 @@ class WebDAVService:
         except Exception as e:
             self.logger.error(f"Error moving file: {str(e)}")
             return False
+            
+    def reload_cache(self):
+        """
+        Force a reload of the document cache
+        
+        Returns:
+            int: Number of documents loaded
+        """
+        self.logger.info("Forcing reload of document cache")
+        self.cache.clear()
+        documents = self.get_all_documents()  # This will reload and update the cache
+        return len(documents)
+        
+    def get_cache_stats(self):
+        """
+        Get document cache statistics
+        
+        Returns:
+            dict: Cache statistics
+        """
+        return self.cache.get_stats()

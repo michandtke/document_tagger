@@ -24,6 +24,7 @@ class DocumentService:
         """
         self.logger.info("Fetching all documents")
         try:
+            # Uses the cached version if available
             documents = self.webdav.get_all_documents()
             self.logger.debug(f"Retrieved {len(documents)} documents")
             return documents
@@ -48,6 +49,7 @@ class DocumentService:
         
         try:
             # Use the webdav service to add the document
+            # This will also update the cache
             success = self.webdav.add_document(
                 filename=filename,
                 tags=tags,
@@ -79,6 +81,7 @@ class DocumentService:
         self.logger.info(f"Deleting document: {doc_id}")
         
         try:
+            # This will also update the cache
             success = self.webdav.delete_document(doc_id)
             
             if success:

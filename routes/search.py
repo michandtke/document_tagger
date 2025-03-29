@@ -76,10 +76,18 @@ def register_routes(app):
                 file_data, filename, tags
             )
             
+            # Get suggested tags string from the first suggestion if available
+            suggested_tags = ""
+            if tag_suggestions and len(tag_suggestions) > 0:
+                best_suggestion = tag_suggestions[0]
+                if 'tags' in best_suggestion:
+                    suggested_tags = best_suggestion['tags']
+            
             # Return results as JSON
             return JSONResponse({
                 "similarities": similarity_data,
-                "tag_suggestions": tag_suggestions
+                "tag_suggestions": tag_suggestions,
+                "suggested_tags": suggested_tags
             })
             
         except Exception as e:
@@ -87,5 +95,6 @@ def register_routes(app):
             return JSONResponse({
                 "similarities": {},
                 "tag_suggestions": [],
+                "suggested_tags": "",
                 "error": str(e)
             })

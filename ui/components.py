@@ -271,6 +271,87 @@ class UIComponents:
             cls="metadata-form hidden"
         )
         
+        # Create auto-tag script
+        tag_script = Script("""
+        // Update the getFileSimilarities function to automatically apply the best tag suggestion
+        async function getFileSimilarities(filename) {
+            try {
+                // Create form data
+                const formData = new FormData();
+                formData.append('filename', filename);
+                
+                // Send to endpoint for similarity calculation
+                const response = await fetch('/preview_raw_similarity', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    
+                    // Update extracted text preview
+                    const extractedTextPreview = document.getElementById('extracted-text-preview');
+                    if (extractedTextPreview) {
+                        if (result.extracted_text_sample) {
+                            extractedTextPreview.innerHTML = `<div class="text-preview">
+                                <h4>Extracted Content (sample):</h4>
+                                <pre>${result.extracted_text_sample}</pre>
+                            </div>`;
+                        } else {
+                            extractedTextPreview.innerHTML = '';
+                        }
+                    }
+                    
+                    // Update similarities in the main document table if it exists
+                    if (result.similarities) {
+                        updateTableSimilarities(result.similarities);
+                    }
+                    
+                    // Auto-fill tags if suggested tags are available
+                    const tagsInput = document.getElementById('tags-input');
+                    if (tagsInput && result.suggested_tags) {
+                        tagsInput.value = result.suggested_tags;
+                        
+                        // Show notification about auto-filled tags
+                        const notification = document.getElementById('tag-suggestion-notice');
+                        if (notification) {
+                            notification.textContent = 'Tags automatically suggested based on similar document';
+                            notification.classList.remove('hidden');
+                            
+                            // Hide after 5 seconds
+                            setTimeout(() => {
+                                notification.classList.add('hidden');
+                            }, 5000);
+                        }
+                    }
+                    
+                    // Display tag suggestions
+                    if (result.tag_suggestions && result.tag_suggestions.length > 0) {
+                        displayTagSuggestions(result.tag_suggestions);
+                    } else {
+                        // Hide tag suggestions panel if no suggestions
+                        const suggestionPanel = document.getElementById('tag-suggestions-panel');
+                        if (suggestionPanel) {
+                            suggestionPanel.classList.add('hidden');
+                        }
+                    }
+                } else {
+                    console.error('Failed to get similarities');
+                    const extractedTextPreview = document.getElementById('extracted-text-preview');
+                    if (extractedTextPreview) {
+                        extractedTextPreview.innerHTML = '<div class="error">Failed to analyze file</div>';
+                    }
+                }
+            } catch (error) {
+                console.error('Error getting similarities:', error);
+                const extractedTextPreview = document.getElementById('extracted-text-preview');
+                if (extractedTextPreview) {
+                    extractedTextPreview.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                }
+            }
+        }
+        """)
+        
         # Create table
         return Div(
             Table(
@@ -279,7 +360,8 @@ class UIComponents:
                 cls="doc-table raw-files-table",
                 id="raw-files-table"
             ),
-            metadata_form
+            metadata_form,
+            tag_script
         )
 
     @staticmethod

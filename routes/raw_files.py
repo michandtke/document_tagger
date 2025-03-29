@@ -37,11 +37,46 @@ def register_routes(app):
             cls="container nav-container"
         )
         
+        # Include custom script to enhance showMetadataForm to auto-suggest tags
+        custom_script = Script("""
+        // Enhanced showMetadataForm function to automatically suggest tags
+        async function showMetadataForm(filename) {
+            // Show the metadata form
+            const metadataForm = document.getElementById('metadata-form');
+            if (metadataForm) {
+                metadataForm.classList.remove('hidden');
+            }
+            
+            // Set the filename in the form
+            const filenameSpan = document.getElementById('metadata-filename');
+            const filenameInput = document.getElementById('filename-input');
+            if (filenameSpan) filenameSpan.textContent = filename;
+            if (filenameInput) filenameInput.value = filename;
+            
+            // Clear existing tag suggestions
+            const suggestionsContainer = document.getElementById('tag-suggestions-container');
+            if (suggestionsContainer) suggestionsContainer.innerHTML = '';
+            
+            // Show loading indicator
+            const extractedTextPreview = document.getElementById('extracted-text-preview');
+            if (extractedTextPreview) {
+                extractedTextPreview.innerHTML = '<div class="loading">Analyzing file content...</div>';
+            }
+            
+            // Calculate similarities and get tag suggestions
+            getFileSimilarities(filename);
+            
+            // Scroll to the metadata form
+            metadataForm.scrollIntoView({ behavior: 'smooth' });
+        }
+        """)
+        
         # Render page
         return Titled(
             "Raw Files Manager",
             Style(Styles.get_app_css()),
             Script(Scripts.get_client_js()),
+            custom_script,
             nav_links,
             upload_section,
             Div(file_table, cls="container")
@@ -80,10 +115,18 @@ def register_routes(app):
                 file_data, filename, ""
             )
             
+            # Get suggested tags string from the first suggestion if available
+            suggested_tags = ""
+            if tag_suggestions and len(tag_suggestions) > 0:
+                best_suggestion = tag_suggestions[0]
+                if 'tags' in best_suggestion:
+                    suggested_tags = best_suggestion['tags']
+            
             # Return similarities and tag suggestions
             return JSONResponse({
                 "similarities": similarity_data,
                 "tag_suggestions": tag_suggestions,
+                "suggested_tags": suggested_tags,
                 "extracted_text_sample": extracted_text[:500] if extracted_text else ""
             })
             

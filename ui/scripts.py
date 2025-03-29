@@ -77,6 +77,11 @@ async function getPreviewSimilarity(file) {
                 similarityContainer.innerHTML = result.similarity_html;
             }
             
+            // Show tag suggestion panel if suggestions exist
+            if (result.tag_suggestions && result.tag_suggestions.length > 0) {
+                displayTagSuggestions(result.tag_suggestions);
+            }
+            
             // Update tags input if suggestions exist
             if (result.suggested_tags && tagsInput) {
                 const currentTags = tagsInput.value.trim();

@@ -11,10 +11,12 @@ def register_routes(app):
     """Register main page routes"""
     rt = app.route
     
-    # routes/main.py (update the get function)
     @rt('/')
-    def get():
+    def get(request):
         """Main page route - list all documents"""
+        # Check if this is the initial page load or a non-HTMX request
+        is_initial_load = not request.headers.get('HX-Request')
+        
         # Get all documents
         documents = document_service.get_all_documents()
         logger.info(f"Displaying {len(documents)} documents on main page")
@@ -25,17 +27,17 @@ def register_routes(app):
         search_section = UIComponents.create_search_section()
         doc_table = UIComponents.create_document_table(documents)
         
-        # Add navigation links
-        nav_links = Div(
-            A("View Raw Files", href="/raw_files", cls="nav-link"),
-            cls="container nav-container"
-        )
+        # Add navigation links with links to other sections
+        nav_links = UIComponents.create_navigation([
+            ("View Raw Files", "/raw_files"),
+            ("Admin Dashboard", "/admin")
+        ])
         
         # Render page
         return Titled(
             "Document Tagger System",
-            Style(Styles.get_app_css()),
-            Script(Scripts.get_client_js()),
+            Style(Styles.get_documents_css()),
+            Script(Scripts.get_documents_js()),
             upload_section,
             new_file_section,
             search_section,

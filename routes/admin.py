@@ -1,7 +1,8 @@
 import logging
 from fasthtml.common import *
-from starlette.responses import RedirectResponse, JSONResponse
+from starlette.responses import RedirectResponse
 from . import document_service, similarity_service
+from ui.components import UIComponents
 from ui.styles import Styles
 from ui.scripts import Scripts
 
@@ -39,16 +40,13 @@ def register_routes(app):
         )
         
         # Navigation links
-        nav_links = Div(
-            A("Back to Document Library", href="/", cls="nav-link"),
-            cls="container nav-container"
-        )
+        nav_links = UIComponents.create_navigation([("Back to Document Library", "/")])
         
         # Render admin page
         return Titled(
             "Admin Dashboard",
-            Style(Styles.get_app_css()),
-            Script(Scripts.get_client_js()),
+            Style(Styles.get_base_css()),
+            Script(Scripts.get_utils_js()),
             nav_links,
             Div(
                 H2("Document Cache Statistics"),

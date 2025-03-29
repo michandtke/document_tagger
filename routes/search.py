@@ -1,6 +1,6 @@
 import logging
 from fasthtml.common import *
-from starlette.responses import RedirectResponse
+from starlette.responses import RedirectResponse, JSONResponse
 from . import document_service, similarity_service
 from ui.components import UIComponents
 from ui.styles import Styles
@@ -32,6 +32,9 @@ def register_routes(app):
         search_section = UIComponents.create_search_section(query)
         doc_table = UIComponents.create_document_table(sorted_documents, similarity_data)
         
+        # Add navigation
+        nav_links = UIComponents.create_navigation([("Back to Document Library", "/")])
+        
         # Add debug information
         debug_info = ""
         if similarity_data:
@@ -40,11 +43,12 @@ def register_routes(app):
         # Render search results page
         return Titled(
             f"Search: {query} - Document Tagger",
-            Style(Styles.get_app_css()),
-            Script(Scripts.get_client_js()),
+            Style(Styles.get_documents_css()),
+            Script(Scripts.get_documents_js()),
             upload_section,
             new_file_section,
             search_section,
+            nav_links,
             Div(doc_table, cls="container"),
             Div(
                 P(f"Showing search results for: '{query}'", cls="search-info"),

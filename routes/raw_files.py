@@ -33,197 +33,37 @@ def register_routes(app):
         file_table = UIComponents.create_raw_files_table(raw_files)
         
         # Add navigation links
-        nav_links = Div(
-            A("View Document Library", href="/", cls="nav-link"),
-            cls="container nav-container"
-        )
-        
-        # Include custom script to enhance showMetadataForm to auto-suggest tags and show file preview
-        custom_script = Script("""
-        // Enhanced showMetadataForm function to automatically suggest tags and show file preview
-        async function showMetadataForm(filename) {
-            // Show the metadata form
-            const metadataForm = document.getElementById('metadata-form');
-            if (metadataForm) {
-                metadataForm.classList.remove('hidden');
-            }
-            
-            // Set the filename in the form
-            const filenameSpan = document.getElementById('metadata-filename');
-            const filenameInput = document.getElementById('filename-input');
-            if (filenameSpan) filenameSpan.textContent = filename;
-            if (filenameInput) filenameInput.value = filename;
-            
-            // Clear existing tag suggestions
-            const suggestionsContainer = document.getElementById('tag-suggestions-container');
-            if (suggestionsContainer) suggestionsContainer.innerHTML = '';
-            
-            // Show loading indicator
-            const extractedTextPreview = document.getElementById('extracted-text-preview');
-            if (extractedTextPreview) {
-                extractedTextPreview.innerHTML = '<div class="loading">Analyzing file content...</div>';
-            }
-            
-            // Display file preview
-            const previewContainer = document.getElementById('file-preview-container');
-            if (previewContainer) {
-                previewContainer.innerHTML = '<div class="loading">Loading file preview...</div>';
-                await loadFilePreview(filename, previewContainer);
-            }
-            
-            // Calculate similarities and get tag suggestions
-            getFileSimilarities(filename);
-            
-            // Scroll to the metadata form
-            metadataForm.scrollIntoView({ behavior: 'smooth' });
-        }
-        
-        // Function to load file preview based on file type
-        async function loadFilePreview(filename, container) {
-            try {
-                // Get the file extension
-                const ext = filename.split('.').pop().toLowerCase();
-                
-                // Create a URL to stream the file content
-                const previewUrl = '/raw_file_preview?filename=' + encodeURIComponent(filename);
-                
-                // Display preview based on file type
-                if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(ext)) {
-                    // Image preview
-                    container.innerHTML = `<img src="${previewUrl}" alt="${filename}" />`;
-                } 
-                else if (ext === 'pdf') {
-                    // PDF preview using iframe
-                    container.innerHTML = `<iframe class="pdf-preview" src="${previewUrl}" title="${filename}"></iframe>`;
-                }
-                else if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) {
-                    // Office document icon
-                    const docType = {
-                        'doc': 'Word', 'docx': 'Word',
-                        'xls': 'Excel', 'xlsx': 'Excel',
-                        'ppt': 'PowerPoint', 'pptx': 'PowerPoint'
-                    }[ext];
-                    
-                    container.innerHTML = `
-                        <div class="unsupported-file">
-                            <div class="document-icon">📄</div>
-                            <div>${docType} Document</div>
-                            <div class="file-info">${filename}</div>
-                        </div>
-                    `;
-                }
-                else if (['txt', 'csv', 'json', 'xml', 'html', 'css', 'js'].includes(ext)) {
-                    // Try to fetch and display text content
-                    try {
-                        const response = await fetch(previewUrl);
-                        if (response.ok) {
-                            const text = await response.text();
-                            container.innerHTML = `<pre style="white-space: pre-wrap; max-height: 300px; overflow: auto;">${text.substring(0, 5000)}</pre>`;
-                            if (text.length > 5000) {
-                                container.innerHTML += '<div class="file-info">(Preview truncated, showing first 5000 characters)</div>';
-                            }
-                        } else {
-                            throw new Error('Failed to load text content');
-                        }
-                    } catch (e) {
-                        container.innerHTML = `
-                            <div class="unsupported-file">
-                                <div class="document-icon">📄</div>
-                                <div>Text Document</div>
-                                <div class="file-info">${filename}</div>
-                            </div>
-                        `;
-                    }
-                }
-                else {
-                    // Generic file icon for unsupported types
-                    container.innerHTML = `
-                        <div class="unsupported-file">
-                            <div class="document-icon">📄</div>
-                            <div>File Preview Not Available</div>
-                            <div class="file-info">${filename}</div>
-                        </div>
-                    `;
-                }
-            } catch (error) {
-                console.error('Error loading file preview:', error);
-                container.innerHTML = `
-                    <div class="unsupported-file">
-                        <div class="document-icon">❌</div>
-                        <div>Error Loading Preview</div>
-                        <div class="file-info">${error.message}</div>
-                    </div>
-                `;
-            }
-        }
-        """)
-        
+        nav_links = UIComponents.create_navigation([("View Document Library", "/")])
         # Render page
         return Titled(
             "Raw Files Manager",
-            Style(Styles.get_app_css()),
-            Script(Scripts.get_client_js()),
-            custom_script,
+            Style(Styles.get_raw_files_css()),
+            Script(Scripts.get_raw_files_js()),
             nav_links,
             upload_section,
             Div(file_table, cls="container")
         )
-    
-    @rt('/preview_raw_similarity')
-    async def post(request):
-        """Calculate similarity for a raw file before adding metadata"""
-        form = await request.form()
-        filename = form.get('filename')
-        raw_folder = webdav_config.get('raw_folder', '/raw_documents')
+        
+    @rt('/add_metadata_form')
+    def get(request):
+        """Dedicated page for adding metadata to a raw file"""
+        # Get filename from query parameter
+        filename = request.query_params.get('filename')
         
         if not filename:
-            return JSONResponse({
-                "similarities": {},
-                "tag_suggestions": [],
-                "error": "No filename provided"
-            })
+            # Redirect to raw files page if no filename is provided
+            return RedirectResponse('/raw_files', status_code=303)
         
-        try:
-            file_data = document_service.webdav.get_raw_document(filename)
-
-            if file_data is None:
-                logger.error(f"Error downloading raw document {filename}")
-                return JSONResponse({
-                    "similarities": {},
-                    "tag_suggestions": [],
-                    "error": f"Error downloading raw document {filename}"
-                })
-            
-            # Extract text from file
-            extracted_text = text_extractor.extract_text(file_data, filename)
-            
-            # Calculate similarities with existing documents
-            similarity_data, _, tag_suggestions = similarity_service.calculate_similarities_from_file(
-                file_data, filename, ""
-            )
-            
-            # Get suggested tags string from the first suggestion if available
-            suggested_tags = ""
-            if tag_suggestions and len(tag_suggestions) > 0:
-                best_suggestion = tag_suggestions[0]
-                if 'tags' in best_suggestion:
-                    suggested_tags = best_suggestion['tags']
-            
-            # Return similarities and tag suggestions
-            return JSONResponse({
-                "similarities": similarity_data,
-                "tag_suggestions": tag_suggestions,
-                "suggested_tags": suggested_tags,
-                "extracted_text_sample": extracted_text[:500] if extracted_text else ""
-            })
-            
-        except Exception as e:
-            logger.error(f"Error calculating preview similarity: {str(e)}")
-            return JSONResponse({
-                "similarities": {},
-                "tag_suggestions": [],
-                "error": str(e)
-            })
+        # Create metadata form
+        metadata_form = UIComponents.create_metadata_form(filename)
+        
+        # Render page
+        return Titled(
+            f"Add Metadata - {filename}",
+            Style(Styles.get_metadata_css()),
+            Script(Scripts.get_metadata_js()),
+            metadata_form
+        )
     
     @rt('/raw_file_preview')
     async def get(request):
@@ -280,6 +120,62 @@ def register_routes(app):
         except Exception as e:
             logger.error(f"Error serving preview for {filename}: {str(e)}")
             return Response(f"Error: {str(e)}", status_code=500)
+    
+    @rt('/preview_raw_similarity')
+    async def post(request):
+        """Calculate similarity for a raw file before adding metadata"""
+        form = await request.form()
+        filename = form.get('filename')
+        raw_folder = webdav_config.get('raw_folder', '/raw_documents')
+        
+        if not filename:
+            return JSONResponse({
+                "similarities": {},
+                "tag_suggestions": [],
+                "error": "No filename provided"
+            })
+        
+        try:
+            file_data = document_service.webdav.get_raw_document(filename)
+
+            if file_data is None:
+                logger.error(f"Error downloading raw document {filename}")
+                return JSONResponse({
+                    "similarities": {},
+                    "tag_suggestions": [],
+                    "error": f"Error downloading raw document {filename}"
+                })
+            
+            # Extract text from file
+            extracted_text = text_extractor.extract_text(file_data, filename)
+            
+            # Calculate similarities with existing documents
+            similarity_data, _, tag_suggestions = similarity_service.calculate_similarities_from_file(
+                file_data, filename, ""
+            )
+            
+            # Get suggested tags string from the first suggestion if available
+            suggested_tags = ""
+            if tag_suggestions and len(tag_suggestions) > 0:
+                best_suggestion = tag_suggestions[0]
+                if 'tags' in best_suggestion:
+                    suggested_tags = best_suggestion['tags']
+            
+            # Return similarities and tag suggestions
+            return JSONResponse({
+                "similarities": similarity_data,
+                "tag_suggestions": tag_suggestions,
+                "suggested_tags": suggested_tags,
+                "extracted_text_sample": extracted_text[:500] if extracted_text else ""
+            })
+            
+        except Exception as e:
+            logger.error(f"Error calculating preview similarity: {str(e)}")
+            return JSONResponse({
+                "similarities": {},
+                "tag_suggestions": [],
+                "error": str(e)
+            })
     
     @rt('/add_metadata')
     async def post(request):

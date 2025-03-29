@@ -249,6 +249,15 @@ class UIComponents:
         metadata_form = Div(
             H3("Add Metadata"),
             P("Adding metadata for: ", Span("", id="metadata-filename")),
+            
+            # File preview section
+            Div(
+                H4("File Preview:"),
+                Div(id="file-preview-container", cls="file-preview-container"),
+                id="file-preview-section",
+                cls="file-preview-section"
+            ),
+            
             Div(id="extracted-text-preview", cls="extracted-text-preview"),
             Div(
                 H4("Tag suggestions:", style="margin-bottom: 8px;"),

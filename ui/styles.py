@@ -365,4 +365,98 @@ input[type="text"] {
   font-size: 1em;
   color: #555;
 }
+
+/* File preview styles */
+.file-preview-section {
+  margin: 15px 0;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
+
+.file-preview-container {
+  max-width: 100%;
+  overflow: auto;
+  margin-top: 10px;
+  background-color: white;
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid #eee;
+  min-height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.file-preview-container img {
+  max-width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+}
+
+.file-preview-container .pdf-preview {
+  width: 100%;
+  height: 400px;
+  border: none;
+}
+
+.file-preview-container .document-icon {
+  font-size: 64px;
+  color: var(--primary-color);
+  opacity: 0.8;
+  margin-bottom: 10px;
+}
+
+.file-preview-container .unsupported-file {
+  text-align: center;
+  color: #666;
+}
+
+.file-info {
+  margin-top: 10px;
+  font-size: 0.9em;
+  color: #666;
+}
+
+/* Loading overlay styles */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  color: white;
+  font-size: 1.2em;
+  transition: opacity 0.3s ease;
+}
+
+.loading-spinner {
+  border: 5px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top: 5px solid var(--primary-color);
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-message {
+  text-align: center;
+  max-width: 80%;
+  background-color: rgba(0, 0, 0, 0.7);
+  padding: 10px 20px;
+  border-radius: 5px;
+}
 """
